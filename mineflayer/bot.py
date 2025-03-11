@@ -1,7 +1,9 @@
 from javascript import require
 import asyncio
+import signal
 from .events import EventHandler, setup_events
-
+from ._types import bot as tBot
+from ._types import *  # Types
 mineflayer = require("mineflayer", "latest")
 
 class Bot(EventHandler):
@@ -29,7 +31,7 @@ class Bot(EventHandler):
         - keep_alive_max_missed: The maximum missed of keep alive.
         - keep_alive_max_missed_interval: The maximum missed interval of keep alive.
         
-        Returns:
+        Usage:
         - Bot: Needs to be started with `run` or `start` methods.
         """
         super().__init__()
@@ -52,24 +54,26 @@ class Bot(EventHandler):
         self.keep_alive_max_timeout = keep_alive_max_timeout
         self.keep_alive_max_missed = keep_alive_max_missed
         self.keep_alive_max_missed_interval = keep_alive_max_missed_interval
-        self.bot = None
+        self._bot = None
+        global tBot
+        tBot = self  # for types file
 
-    def event(self, func):
+    def event(self, func) -> None:
         """Decorator to store and register events."""
         event_name = func.__name__.replace("on_", "")
         self.pending_events.append((event_name, func))
         return func
 
-    def register_event(self, event_name, handler):
+    def register_event(self, event_name, handler) -> None:
         """Registers an event handler for a specific event."""
-        if self.bot and hasattr(self.bot, 'on'):
+        if self._bot and hasattr(self._bot, 'on'):
             def wrapper(*args):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(handler(*args))
-            self.bot.on(event_name, wrapper)
+            self._bot.on(event_name, wrapper)
 
-    async def start(self, host='localhost', port=25565):
+    async def start(self, host='localhost', port=25565) -> None:
         """
         Starts the bot asynchronously and connects to a Minecraft server.
         
@@ -79,7 +83,7 @@ class Bot(EventHandler):
         Returns:
         - None
         """
-        self.bot = mineflayer.createBot({
+        self._bot = mineflayer.createBot({
             'username': self.username,
             'password': self.password,
             'host': host,
@@ -112,31 +116,44 @@ class Bot(EventHandler):
         except asyncio.CancelledError:
             self.shutdown(reason="Cancelled")
 
-    def shutdown(self, reason="Shutdown"):
+    def shutdown(self, reason="KeyboardInterrupt", *args) -> None:
         """Gracefully shuts down the bot."""
-        if self.bot:
-            print("\nShutting down bot...")
+        if self._bot:
             try:
-                # Add timeout handling for the end() call
-                asyncio.wait_for(self.bot.end(reason), timeout=5.0)
+                # Reduce timeout and add explicit loop handling
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(asyncio.wait_for(self._bot.end(reason), timeout=2.0))
+                
+                # Force close any pending tasks
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                
+                # Clean final tasks    
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.call_soon_threadsafe(loop.stop)
+                
             except Exception:
-                # If end() times out or fails, force exit
-                pass
+                # Force stop if timeout occurs
+                if loop.is_running():
+                    loop.stop()
             finally:
-                self.bot = None
+                self._bot = None
 
-    def run(self, host='localhost', port=25565):
+
+    def run(self, host='localhost', port=25565) -> None:
         """
         Synchronous entry point that properly integrates with an asyncio loop.
         Parameters:
         - host: The host to connect to.
         - port: The port to connect to.
-        Returns:
-        - None
         """
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+
+        signal.signal(signal.SIGINT, self.shutdown)
+
         try:
             loop.run_until_complete(self.start(host, port))
         except KeyboardInterrupt:

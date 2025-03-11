@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="prism.py",
+    name="mineflayer",
     version="0.1.0",
     description="A Python bot framework using mineflayer on the backend",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="SnarkyDeveloper",
     author_email="snarkydeveloper@outlook.com",
-    url="https://github.com/snarkydeveloper/prism.py",
+    url="https://github.com/snarkydeveloper/mineflayer",
     packages=find_packages(),
     install_requires=['javascript'],
     classifiers=[

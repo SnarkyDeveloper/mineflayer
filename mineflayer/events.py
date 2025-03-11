@@ -38,5 +38,5 @@ async def on_chat(*args):
 
 async def setup_events(bot):
     """Register events after bot is created"""
-    bot.bot.on("spawn", await on_spawn)
-    bot.bot.on("chat", await on_chat)
+    bot._bot.on("spawn", on_spawn)
+    bot._bot.on("chat", on_chat)
