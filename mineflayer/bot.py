@@ -1,11 +1,13 @@
 from javascript import require
 import asyncio
 import signal
+import logging
 from .events import EventHandler, setup_events
 from ._types import bot as tBot
 from ._types import *  # Types
 mineflayer = require("mineflayer", "latest")
 
+logger = logging.getLogger(__name__)
 class Bot(EventHandler):
     def __init__(self, *, username=None, password=None, auth=None, version=None, offline=False, hide_errors=False, keep_alive=True, view_distance=10, client_id=None, access_token=None, session=None, keep_alive_interval=10000, keep_alive_timeout=30000, keep_alive_max_count=3, keep_alive_max_interval=30000, keep_alive_max_timeout=30000, keep_alive_max_missed=3, keep_alive_max_missed_interval=30000):
         """
@@ -105,12 +107,13 @@ class Bot(EventHandler):
             'keep_alive_max_missed': self.keep_alive_max_missed,
             'keep_alive_max_missed_interval': self.keep_alive_max_missed_interval
         })
-
+        logger.debug("Bot started")
         # Register manually defined events
         for event_name, handler in self.pending_events:
             self.register_event(event_name, handler)
 
         await setup_events(self)
+        signal.signal(signal.SIGINT, self.shutdown)
         try:
             await asyncio.Future()  # Keeps the coroutine running forever
         except asyncio.CancelledError:
@@ -132,7 +135,7 @@ class Bot(EventHandler):
                 # Clean final tasks    
                 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
                 loop.call_soon_threadsafe(loop.stop)
-                
+                logger.debug("Bot stopped")
             except Exception:
                 # Force stop if timeout occurs
                 if loop.is_running():
