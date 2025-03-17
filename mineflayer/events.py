@@ -5,15 +5,6 @@ logger = logging.getLogger(__name__)
 class EventHandler:
     def __init__(self):
         self._events = {}
-    async def can_accept_varargs(func):
-        """Check if a function can accept variable arguments."""
-        if func.__code__.co_argcount != 0:
-            return True
-        sig = inspect.signature(func)
-        for param in sig.parameters.values():
-            if param.kind == inspect.Parameter.VAR_POSITIONAL or param.kind == inspect.Parameter.VAR_KEYWORD:
-                return True
-        return False
     def register_event(self, event_name: str, callback):
         """Registers a callback function to an event."""
         if event_name not in self._events:
@@ -25,11 +16,7 @@ class EventHandler:
         if event_name in self._events:
             for callback in self._events[event_name]:
                 if callable(callback):
-                    if await self.can_accept_varargs(callback):
-                        await callback(*args, **kwargs)
-                    else: # fix later
-                        blank = args, kwargs
-                        await callback()
+                    await callback(*args, **kwargs)
 
     def event(self, event_name=None):
         """Decorator to manually register event handlers."""
@@ -50,7 +37,8 @@ async def on_spawn(*args):
     await events.dispatch("spawn", *args)
 
 async def on_chat(*args):
-    await events.dispatch("chat", *args)
+    _, *remaining_args = args 
+    await events.dispatch("chat", *remaining_args)
 async def on_error(*args):
     logger.error(f"Error: {args}")
     await events.dispatch("error", *args)

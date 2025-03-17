@@ -9,7 +9,7 @@ mineflayer = require("mineflayer", "latest")
 
 logger = logging.getLogger(__name__)
 class Bot(EventHandler):
-    def __init__(self, *, username=None, password=None, auth=None, version=None, offline=False, hide_errors=False, keep_alive=True, view_distance=10, client_id=None, access_token=None, session=None, keep_alive_interval=10000, keep_alive_timeout=30000, keep_alive_max_count=3, keep_alive_max_interval=30000, keep_alive_max_timeout=30000, keep_alive_max_missed=3, keep_alive_max_missed_interval=30000):
+    def __init__(self, *, log_level=logging.INFO, log_file = None, username=None, password=None, auth=None, version=None, offline=False, hide_errors=False, keep_alive=True, view_distance=10, client_id=None, access_token=None, session=None, keep_alive_interval=10000, keep_alive_timeout=30000, keep_alive_max_count=3, keep_alive_max_interval=30000, keep_alive_max_timeout=30000, keep_alive_max_missed=3, keep_alive_max_missed_interval=30000):
         """
         Bot class for controlling a Minecraft bot using mineflayer.
         
@@ -57,6 +57,8 @@ class Bot(EventHandler):
         self.keep_alive_max_missed = keep_alive_max_missed
         self.keep_alive_max_missed_interval = keep_alive_max_missed_interval
         self._bot = None
+        logger.setLevel(log_level)
+        file = logger.addHandler(logging.FileHandler(log_file)) if log_file else None        
         global tBot
         tBot = self  # for types file
 
